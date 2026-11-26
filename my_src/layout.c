@@ -9,6 +9,9 @@
 #include <stdint.h>       // 整数类型定义
 #include <time.h>         // 时间函数
 #include "2048.h"         // 2048 游戏模块接口
+#include "game15.h"       // 数字华容道游戏模块接口
+#include "flipcard.h"     // 记忆翻牌游戏模块接口
+#include "mole.h"         // 打地鼠游戏模块接口
 #include "0ui.h"          // UI 通用组件与全局资源
 
 // 登录主界面屏幕对象
@@ -69,9 +72,15 @@ void gamebox_goto(lv_event_t* e) {
         case 1:
             lv_screen_load(src2048);
             break;
+        case 2:
+            lv_screen_load(src_game15);
+            break;
         case 3:
+            lv_screen_load(src_flipcard);
             break;
         case 4:
+            lv_screen_load(src_mole);
+            mole_enter();      // 进图即开局（重置计分并开始 30 秒回合）
             break;
         case 5:
             break;
@@ -171,6 +180,26 @@ void creat_my_ui(void) {
 
     // 初始化 2048 游戏界面
     creat_my_2048();
+
+    // 创建“华容道”游戏入口按钮（白底文字）
+    int gamebox_15 = style_btn_init(3, 0xFFFFFF, 0x2B2B2B, 28);
+    lv_obj_t* box_15 = create_button(gamebox_15, gamebox, LV_ALIGN_TOP_LEFT, 300, 100, 150, 150, "华容道", gamebox_goto, (void*)2);
+    lv_obj_set_style_bg_opa(box_15, LV_OPA_70, LV_STATE_DEFAULT);
+
+    // 创建“翻牌”游戏入口按钮
+    int gamebox_fc = style_btn_init(3, 0xFFFFFF, 0x2B2B2B, 28);
+    lv_obj_t* box_fc = create_button(gamebox_fc, gamebox, LV_ALIGN_TOP_LEFT, 500, 100, 150, 150, "翻牌", gamebox_goto, (void*)3);
+    lv_obj_set_style_bg_opa(box_fc, LV_OPA_70, LV_STATE_DEFAULT);
+
+    // 创建“打地鼠”游戏入口按钮
+    int gamebox_ms = style_btn_init(3, 0xFFFFFF, 0x2B2B2B, 28);
+    lv_obj_t* box_ms = create_button(gamebox_ms, gamebox, LV_ALIGN_TOP_LEFT, 700, 100, 150, 150, "打地鼠", gamebox_goto, (void*)4);
+    lv_obj_set_style_bg_opa(box_ms, LV_OPA_70, LV_STATE_DEFAULT);
+
+    // 初始化三个游戏界面
+    creat_my_game15();
+    creat_my_flipcard();
+    creat_my_mole();
 
     // 默认加载登录界面
     lv_screen_load(src0);

@@ -6,8 +6,11 @@
 set(MAIN_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/0ui.c
     ${CMAKE_CURRENT_SOURCE_DIR}/2048.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/flipcard.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/game15.c
     ${CMAKE_CURRENT_SOURCE_DIR}/layout.c
     ${CMAKE_CURRENT_SOURCE_DIR}/main.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/mole.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mouse_cursor_icon.c
 )
 
