@@ -9,9 +9,6 @@ set(MAIN_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/layout.c
     ${CMAKE_CURRENT_SOURCE_DIR}/main.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mouse_cursor_icon.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/snake_app.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/snake_core.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/snake_input.c
 )
 
 # 2. 将上述源文件添加到可执行文件中

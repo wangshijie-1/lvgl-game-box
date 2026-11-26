@@ -9,7 +9,6 @@
 #include <stdint.h>       // 整数类型定义
 #include <time.h>         // 时间函数
 #include "2048.h"         // 2048 游戏模块接口
-#include "snake.h"         // 贪吃蛇游戏模块接口
 #include "0ui.h"          // UI 通用组件与全局资源
 
 // 登录主界面屏幕对象
@@ -69,9 +68,6 @@ void gamebox_goto(lv_event_t* e) {
             break;
         case 1:
             lv_screen_load(src2048);
-            break;
-        case 2:
-            lv_screen_load(src_snake);
             break;
         case 3:
             break;
@@ -175,14 +171,6 @@ void creat_my_ui(void) {
 
     // 初始化 2048 游戏界面
     creat_my_2048();
-
-    // 创建“贪吃蛇”游戏入口按钮：白底文字（用户要求暂不使用图片）
-    int gamebox_snake = style_btn_init(3, 0xFFFFFF, 0x2B2B2B, 28);
-    lv_obj_t* box_snake = create_button(gamebox_snake, gamebox, LV_ALIGN_TOP_LEFT, 300, 100, 150, 150, "贪吃蛇", gamebox_goto, (void*)2);
-    lv_obj_set_style_bg_opa(box_snake, LV_OPA_70, LV_STATE_DEFAULT);
-
-    // 初始化贪吃蛇(LVGL 版)游戏界面
-    creat_my_snake();
 
     // 默认加载登录界面
     lv_screen_load(src0);
