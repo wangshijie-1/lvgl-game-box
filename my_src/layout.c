@@ -106,17 +106,19 @@ void creat_my_ui(void) {
 
     // 设置登录界面背景图
     lv_obj_t* zhuyemian = lv_image_create(src0);
-    lv_image_set_src(zhuyemian, "A:/home/KK/3-gamebox/tu/zhujiemian.bmp");
+    lv_image_set_src(zhuyemian, "A:tu/zhujiemian.bmp");
     lv_obj_set_pos(zhuyemian, 0, 0);
 
 
-    lv_obj_t* gif1 = lv_gif_create(src0);
-    lv_gif_set_src(gif1, "A:/home/KK/3-gamebox/tu/renwu/ren1.gif");
-    lv_obj_set_pos(gif1, 50, 50);
+    // 2026-11-27：注释登录主界面的两个调试用人物 GIF（ren1/gj），不再显示。
+    // 原因：早期联调时用于观察刷新，现属冗余元素；恢复时取消注释即可
+    // lv_obj_t* gif1 = lv_gif_create(src0);
+    // lv_gif_set_src(gif1, "A:/home/KK/3-gamebox/tu/renwu/ren1.gif");
+    // lv_obj_set_pos(gif1, 50, 50);
 
-    lv_obj_t* gif2 = lv_gif_create(src0);
-    lv_gif_set_src(gif2, "A:/home/KK/3-gamebox/tu/renwu/gj.gif");
-    lv_obj_set_pos(gif2, 0, 0);
+    // lv_obj_t* gif2 = lv_gif_create(src0);
+    // lv_gif_set_src(gif2, "A:/home/KK/3-gamebox/tu/renwu/gj.gif");
+    // lv_obj_set_pos(gif2, 0, 0);
 
 
     src1 = lv_obj_create(src0);
@@ -160,7 +162,7 @@ void creat_my_ui(void) {
 
 
     lv_obj_t* box_beijing = lv_image_create(gamebox);
-    lv_image_set_src(box_beijing, "A:/home/KK/3-gamebox/tu/gamebox1.bmp");
+    lv_image_set_src(box_beijing, "A:tu/gamebox1.bmp");
     lv_obj_set_pos(box_beijing, 0, 0);
     // 创建游戏盒子中的“返回”按钮：黑底白字，按键不透明度 70%，文字不透明
     int gamebox_fhj = style_btn_init(1, 0x2B2B2B, 0xF7F9FA, 28);
@@ -174,7 +176,7 @@ void creat_my_ui(void) {
 
     // 在 2048 入口按钮上叠加游戏封面图，常态不透明度 70%
     lv_obj_t* box_2048_tu = lv_image_create(box_2048);
-    lv_image_set_src(box_2048_tu, "A:/home/KK/3-gamebox/tu/game2048/box_2048.bmp");
+    lv_image_set_src(box_2048_tu, "A:tu/game2048/box_2048.bmp");
     lv_obj_set_pos(box_2048_tu, -20, -11);
     lv_obj_set_style_image_opa(box_2048_tu, LV_OPA_70, LV_STATE_DEFAULT);
 

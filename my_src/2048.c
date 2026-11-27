@@ -22,9 +22,9 @@ GeZi gezi[SIZE_2048][SIZE_2048];
 
 // 数字 0、2、4、8...2048 对应的 BMP 图片路径表，索引 0~11
 const char* bmp2048[12] = {
-    "A:/home/KK/tu/game2048/0.bmp","A:/home/KK/tu/game2048/2.bmp","A:/home/KK/tu/game2048/4.bmp","A:/home/KK/tu/game2048/8.bmp",
-    "A:/home/KK/tu/game2048/16.bmp","A:/home/KK/tu/game2048/32.bmp","A:/home/KK/tu/game2048/64.bmp","A:/home/KK/tu/game2048/128.bmp",
-    "A:/home/KK/tu/game2048/256.bmp","A:/home/KK/tu/game2048/512.bmp","A:/home/KK/tu/game2048/1024.bmp","A:/home/KK/tu/game2048/2048.bmp",
+    "A:tu/game2048/0.bmp","A:tu/game2048/2.bmp","A:tu/game2048/4.bmp","A:tu/game2048/8.bmp",
+    "A:tu/game2048/16.bmp","A:tu/game2048/32.bmp","A:tu/game2048/64.bmp","A:tu/game2048/128.bmp",
+    "A:tu/game2048/256.bmp","A:tu/game2048/512.bmp","A:tu/game2048/1024.bmp","A:tu/game2048/2048.bmp",
 };
 
 // ---------------------------------------------------------
@@ -270,12 +270,12 @@ void creat_my_2048(void) {
 
     // 设置 2048 游戏界面背景图（底板）
     lv_obj_t* diban_2048 = lv_image_create(src2048);
-    lv_image_set_src(diban_2048, "A:/home/KK/3-gamebox/tu/game2048/game20481.bmp");
+    lv_image_set_src(diban_2048, "A:tu/game2048/game20481.bmp");
     lv_obj_set_pos(diban_2048, 0, 0);
 
     // 设置 2048 游戏界面背景图（上层装饰）
     lv_obj_t* beijing_2048 = lv_image_create(src2048);
-    lv_image_set_src(beijing_2048, "A:/home/KK/3-gamebox/tu/game2048/game.bmp");
+    lv_image_set_src(beijing_2048, "A:tu/game2048/game.bmp");
     lv_obj_set_pos(beijing_2048, 0, 0);
 
     // 创建 4x4 棋盘图像网格，起始位置 (180, 180)

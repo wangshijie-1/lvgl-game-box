@@ -85,7 +85,7 @@ typedef enum {
 extern int RGB[wu + 1];
 
 // 中文字体文件路径
-#define FONT_FILE_PATH "A:/home/KK/tu/hei.TTF"
+#define FONT_FILE_PATH "A:tu/hei.TTF"
 
 // 按需获取指定字号的中文字体（内部按字号缓存，避免重复加载耗尽内存）
 lv_font_t* ui_font_get(int size);

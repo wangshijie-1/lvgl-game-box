@@ -21,10 +21,10 @@ cmake ..
 make        # 可执行文件输出到 bin/main，LVGL 动态库输出到 bin/liblvgl.so
 ```
 
-在开发板上运行（需要帧缓冲与触摸设备权限）：
+在开发板上部署运行：把 `bin/main`、`bin/liblvgl.so` 与 `tu/` 资源目录放到同一目录，在该目录下执行（需要帧缓冲与触摸设备权限）：
 
 ```bash
-./bin/main
+./main
 ```
 
 ## 架构
@@ -49,7 +49,7 @@ make        # 可执行文件输出到 bin/main，LVGL 动态库输出到 bin/li
 
 **显示与输入**：main.c 通过 lv_linux_fbdev_create 创建帧缓冲显示设备并绑定 /dev/fb0，通过 lv_evdev_create 创建指针类输入设备绑定触摸节点，主循环以 5ms 周期调用 lv_timer_handler。随机数种子由系统时间初始化，供 2048 使用。
 
-**构建与部署**：CMake 配置 aarch64 交叉工具链，把 LVGL 编译为动态库（禁用 examples/demos，保留内部依赖的 thorvg），库产物统一输出到 bin 目录。可执行文件设置 `$ORIGIN` rpath，在板端同级目录自动找到 liblvgl.so，部署时不需要配置 LD_LIBRARY_PATH。lv_conf.h 由 configure_file 从 my_src 复制到 LVGL 目录后参与编译。
+**构建与部署**：CMake 配置 aarch64 交叉工具链，把 LVGL 编译为动态库（禁用 examples/demos，保留内部依赖的 thorvg），库产物统一输出到 bin 目录。可执行文件设置 `$ORIGIN` rpath，在板端同级目录自动找到 liblvgl.so，部署时不需要配置 LD_LIBRARY_PATH。lv_conf.h 由 configure_file 从 my_src 复制到 LVGL 目录后参与编译。图片与字体以相对路径 `tu/` 引用（`A:` 为 LVGL 文件系统盘符，经 POSIX 后端按进程工作目录解析），资源随仓库提供，部署时与可执行文件放同一目录即可。
 
 **源文件清单**：my_src/CMakeLists.txt 使用显式源文件列表而非 file(GLOB)。GLOB 在新增 .c 文件时不会可靠刷新目标列表，Makefile 生成器下只打印 mismatch 警告、本次仍按旧列表编译，链接阶段报 undefined reference；显式清单行为可预期，新增模块补一行即可。
 
@@ -67,7 +67,7 @@ make        # 可执行文件输出到 bin/main，LVGL 动态库输出到 bin/li
 
 ## 已知限制
 
-- 图片与中文字体使用板端绝对路径（`A:/home/KK/...`），换环境需要同步修改 layout.c、2048.c 与 FONT_FILE_PATH
+- 图片与字体依赖运行目录下的 `tu/`，程序必须从资源同级目录启动（工作目录即基准）
 - 触摸设备节点固定为 `/dev/input/event6`，不同板子的 event 编号需要相应调整
 - 布局按 1024x600 屏幕坐标编写，未做按分辨率自适应
 - 打地鼠的两个定时器随应用常驻，靠 running 标志空转，会有极小的固定开销
@@ -88,6 +88,7 @@ make        # 可执行文件输出到 bin/main，LVGL 动态库输出到 bin/li
 │   ├── mole.c/.h           打地鼠
 │   ├── mouse_cursor_icon.c 鼠标指针图标
 │   └── lv_conf.h           LVGL 配置（构建时复制到 lvgl/）
+├── tu/                     图片与字体资源（2048 数字图块、界面背景、hei.TTF 中文字体）
 └── lvgl/                   LVGL 9 上游源码（引入的第三方库，非本项目代码）
 ```
 
