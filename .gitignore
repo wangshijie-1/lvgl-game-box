@@ -1,3 +1,5 @@
 build/
 bin/
 .vscode/
+# 压缩前的原始大图（1536x1536 PNG，仅本地留档，板端不使用）
+.asset_original/

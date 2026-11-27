@@ -1,8 +1,11 @@
 /**
  * @file flipcard.c
  * @brief 记忆翻牌配对游戏逻辑与界面实现
- * @details 4x4 共 16 张牌、8 对汉字。点击翻开一张；再翻第二张：
+ * @details 4x4 共 16 张牌。每局从 15 种水果图片中随机抽取 8 种，
+ *          每种配成一对。点击翻开一张；再翻第二张：
  *          两张相同 → 配对成功，变色固定；不同 → 600ms 后自动翻回。
+ *          牌面为按钮上叠加的 lv_image，背面显示 "?" 并隐藏图片，
+ *          翻开时隐藏文字并显示对应 BMP 图片。
  *
  * 并发要点：第二张翻错后设置 lock 标志并启动一次性 LVGL 定时器，
  * 定时器回调里翻回两张牌并解除 lock——避免玩家在等待翻回期间
@@ -20,15 +23,28 @@
 // 游戏界面屏幕对象
 lv_obj_t* src_flipcard = NULL;
 
-// 8 对汉字（16 张牌的内容来源）
-static const char* PAIR_CHARS[8] = { "甲", "乙", "丙", "丁", "戊", "己", "庚", "壬" };
+// 15 种水果图片（88x88 BMP，路径按程序运行目录下的 tu/ 解析）
+static const char* FRUIT_IMGS[15] = {
+    "A:tu/flipcard/apple.bmp",      "A:tu/flipcard/banana.bmp",
+    "A:tu/flipcard/cherry.bmp",     "A:tu/flipcard/grape.bmp",
+    "A:tu/flipcard/blueberry.bmp",  "A:tu/flipcard/pear.bmp",
+    "A:tu/flipcard/lemon.bmp",      "A:tu/flipcard/mango.bmp",
+    "A:tu/flipcard/orange.bmp",     "A:tu/flipcard/mangosteen.bmp",
+    "A:tu/flipcard/pineapple.bmp",  "A:tu/flipcard/peach.bmp",
+    "A:tu/flipcard/watermelon.bmp", "A:tu/flipcard/strawberry.bmp",
+    "A:tu/flipcard/kiwi.bmp",
+};
 
-// 每张牌的汉字内容（洗牌后填入）
+#define FRUIT_COUNT 15
+#define PAIR_COUNT  8
+
+// 每张牌的水果图片路径（洗牌后填入）
 static const char* values[16];
 
-// 牌面按钮与其文字标签（标签为按钮的第 0 个子对象）
+// 牌面按钮、文字标签（背面 "?"）与水果图片
 static lv_obj_t* cards[16];
 static lv_obj_t* card_labs[16];
+static lv_obj_t* card_imgs[16];
 
 // 状态数组：matched=已配对固定；revealed=当前正面朝上
 static int matched[16];
@@ -68,33 +84,45 @@ static void update_status(void) {
 }
 
 /**
- * @brief 把一张牌显示为背面（问号）
+ * @brief 把一张牌显示为背面（"?"，隐藏水果图片）
  */
 static void card_hide(int i) {
     lv_label_set_text(card_labs[i], "?");
+    lv_obj_add_flag(card_imgs[i], LV_OBJ_FLAG_HIDDEN);
 }
 
 /**
- * @brief 把一张牌显示为正面（汉字）
+ * @brief 把一张牌显示为正面（水果图片，隐藏 "?"）
  */
 static void card_show(int i) {
-    lv_label_set_text(card_labs[i], values[i]);
+    lv_label_set_text(card_labs[i], "");
+    lv_image_set_src(card_imgs[i], values[i]);
+    lv_obj_remove_flag(card_imgs[i], LV_OBJ_FLAG_HIDDEN);
 }
 
 /**
- * @brief 洗牌：把 8 对汉字随机分配到 16 个位置（Fisher-Yates）
- * @details 每对内容出现两次；初始 first/lock/计时器全部复位
+ * @brief 洗牌：从 15 种水果里随机抽 8 种，各配一对，再打乱到 16 个位置
+ * @details 两次 Fisher-Yates：先洗水果池取前 8 种，再把 16 张牌打乱；
+ *          初始 first/lock/计时器全部复位
  */
 static void flipcard_new_board(void) {
+    const char* fruit_pool[FRUIT_COUNT];
+    for (int i = 0; i < FRUIT_COUNT; i++) fruit_pool[i] = FRUIT_IMGS[i];
+    for (int i = FRUIT_COUNT - 1; i > 0; i--) {
+        int j = lv_rand(0, i);
+        const char* t = fruit_pool[i]; fruit_pool[i] = fruit_pool[j]; fruit_pool[j] = t;
+    }
+
     const char* pool[16];
-    for (int i = 0; i < 8; i++) {
-        pool[i * 2] = PAIR_CHARS[i];
-        pool[i * 2 + 1] = PAIR_CHARS[i];
+    for (int i = 0; i < PAIR_COUNT; i++) {
+        pool[i * 2] = fruit_pool[i];
+        pool[i * 2 + 1] = fruit_pool[i];
     }
     for (int i = 15; i > 0; i--) {
         int j = lv_rand(0, i);
         const char* t = pool[i]; pool[i] = pool[j]; pool[j] = t;
     }
+
     for (int i = 0; i < 16; i++) {
         values[i] = pool[i];
         matched[i] = 0;
@@ -156,7 +184,7 @@ static void flipcard_dialog_ok(lv_event_t* e) {
 /**
  * @brief 牌面点击回调
  * @details user_data 为牌编号；状态机：翻第一张 → 翻第二张 →
- *          判定配对 / 启动翻回定时器
+ *          判定配对 / 启动翻回定时器。配对判定用图片路径比较。
  */
 static void card_cb(lv_event_t* e) {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
@@ -178,7 +206,7 @@ static void card_cb(lv_event_t* e) {
         return;
     }
 
-    // 第二张：判定是否配对
+    // 第二张：判定是否配对（同种水果的图片路径相同）
     int second = idx;
     if (strcmp(values[first], values[second]) == 0) {
         // 配对成功：变色固定，不再响应点击
@@ -209,17 +237,19 @@ static void card_cb(lv_event_t* e) {
 
 /**
  * @brief 创建记忆翻牌游戏界面
- * @details 创建屏幕、标题、状态栏、4x4 牌面网格与控制按钮
+ * @details 创建屏幕、标题、状态栏、4x4 牌面网格与控制按钮。
+ *          每个牌面按钮内叠加一个居中 lv_image 用于显示水果图片，
+ *          牌背面时隐藏图片、由标签显示 "?"。
  */
 void creat_my_flipcard(void) {
     src_flipcard = lv_obj_create(NULL);
     lv_obj_set_style_bg_color(src_flipcard, lv_color_hex(0x38425D), LV_STATE_DEFAULT);
 
     // 标题与状态栏
-    create_label(src_flipcard, 0xF7F9FA, LV_ALIGN_TOP_MID, 0, 12, "记忆翻牌：找出全部 8 对汉字", 28);
+    create_label(src_flipcard, 0xF7F9FA, LV_ALIGN_TOP_MID, 0, 12, "记忆翻牌：找出全部 8 对水果", 28);
     status_lab = create_label(src_flipcard, 0x88E0A0, LV_ALIGN_TOP_MID, 0, 62, "已配对 0/8    翻牌 0 次", 24);
 
-    // 牌面样式：藕荷色底、白字
+    // 牌面样式：藕荷色底、白字（用于背面 "?"）
     int card_style = style_btn_init(5, 0x6C5B7B, 0xF7F9FA, 28);
 
     // 4x4 牌面网格
@@ -228,6 +258,11 @@ void creat_my_flipcard(void) {
             FC_X0 + (i % 4) * FC_STEP, FC_Y0 + (i / 4) * FC_STEP,
             100, 100, "?", card_cb, (void*)(intptr_t)i);
         card_labs[i] = lv_obj_get_child(cards[i], 0);
+
+        // 水果图片：88x88 居中，牌 100x100 四周留 6px 露出按钮背景
+        card_imgs[i] = lv_image_create(cards[i]);
+        lv_obj_set_align(card_imgs[i], LV_ALIGN_CENTER);
+        lv_obj_add_flag(card_imgs[i], LV_OBJ_FLAG_HIDDEN);
     }
 
     // 返回游戏盒子按钮

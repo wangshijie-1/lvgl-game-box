@@ -3,6 +3,9 @@
  * @brief 打地鼠游戏逻辑与界面实现
  * @details 3x3 共 9 个地洞，两个常驻 LVGL 定时器驱动整局游戏：
  *          地鼠定时器（750ms 随机换洞）与回合时钟（1 秒倒计时 30 秒）。
+ *          共 3 种地鼠形象，每种有常态与被敲两张图，一一对应；
+ *          每次出鼠随机选一种，点中后切换为该种的被敲图并展示
+ *          350ms，期间屏蔽换洞，之后恢复为空洞。
  *
  * 定时器管理要点：两个定时器在界面创建时建立、常驻不销毁，靠
  * running 标志位门控——不在界面时定时器空转直接返回，进入界面
@@ -21,9 +24,25 @@
 // 游戏界面屏幕对象
 lv_obj_t* src_mole = NULL;
 
-// 9 个地洞按钮与其文字标签
+// 3 种地鼠的常态图与被敲图（108x108 BMP，一一对应）
+static const char* MOLE_IDLE[3] = {
+    "A:tu/mole/mole_idle_1.bmp",
+    "A:tu/mole/mole_idle_2.bmp",
+    "A:tu/mole/mole_idle_3.bmp",
+};
+static const char* MOLE_HIT[3] = {
+    "A:tu/mole/mole_hit_1.bmp",
+    "A:tu/mole/mole_hit_2.bmp",
+    "A:tu/mole/mole_hit_3.bmp",
+};
+
+#define MOLE_KINDS  3
+#define HIT_SHOW_MS 350
+
+// 9 个地洞按钮、文字标签与地鼠图片
 static lv_obj_t* holes[9];
 static lv_obj_t* hole_labs[9];
+static lv_obj_t* hole_imgs[9];
 
 // 回合状态：是否进行中
 static int running = 0;
@@ -35,6 +54,14 @@ static int time_left = 30;
 
 // 当地鼠所在的地洞编号（-1 表示没有地鼠在场）
 static int active = -1;
+
+// 当前地鼠种类（0~2，决定用哪一组常态/被敲图）
+static int active_kind = 0;
+
+// 被敲反馈：正在展示被敲图的洞、屏蔽换洞标志、一次性恢复定时器
+static int hit_idx = -1;
+static int hit_lock = 0;
+static lv_timer_t* hit_timer = NULL;
 
 // 地鼠定时器与回合时钟
 static lv_timer_t* mole_timer = NULL;
@@ -68,30 +95,66 @@ static void update_status(void) {
 }
 
 /**
- * @brief 地鼠出现：点亮指定地洞
+ * @brief 地洞显示一张图片并隐藏文字
  */
-static void hole_on(int i) {
-    lv_label_set_text(hole_labs[i], "鼠");
+static void hole_show_img(int i, const char* src) {
+    lv_label_set_text(hole_labs[i], "");
+    lv_image_set_src(hole_imgs[i], src);
+    lv_obj_remove_flag(hole_imgs[i], LV_OBJ_FLAG_HIDDEN);
+}
+
+/**
+ * @brief 地鼠出现：在指定地洞显示某种地鼠的常态图
+ */
+static void hole_on(int i, int kind) {
+    hole_show_img(i, MOLE_IDLE[kind]);
     lv_obj_set_style_bg_color(holes[i], lv_color_hex(MOLE_COLOR), LV_STATE_DEFAULT);
 }
 
 /**
- * @brief 地鼠消失：恢复地洞常态
+ * @brief 地鼠消失：恢复地洞常态（隐藏图片与文字）
  */
 static void hole_off(int i) {
+    lv_obj_add_flag(hole_imgs[i], LV_OBJ_FLAG_HIDDEN);
     lv_label_set_text(hole_labs[i], "");
     lv_obj_set_style_bg_color(holes[i], lv_color_hex(HOLE_COLOR), LV_STATE_DEFAULT);
 }
 
 /**
- * @brief 地鼠定时器回调（750ms）：随机换一个洞出地鼠
- * @details running=0 时（不在本界面或回合已结束）直接返回空转
+ * @brief 被敲反馈结束：把被敲图恢复为空洞并解除换洞屏蔽
+ */
+static void hit_back_cb(lv_timer_t* t) {
+    if (hit_timer == t) hit_timer = NULL;
+    lv_timer_delete(t);
+    if (hit_idx >= 0) hole_off(hit_idx);
+    hit_idx = -1;
+    hit_lock = 0;
+}
+
+/**
+ * @brief 清理被敲反馈状态（停局 / 重开 / 时间到共用）
+ */
+static void hit_clear(void) {
+    if (hit_timer) {
+        lv_timer_delete(hit_timer);
+        hit_timer = NULL;
+    }
+    if (hit_idx >= 0) hole_off(hit_idx);
+    hit_idx = -1;
+    hit_lock = 0;
+}
+
+/**
+ * @brief 地鼠定时器回调（750ms）：随机换一个洞、随机选一种地鼠出场
+ * @details running=0 时（不在本界面或回合已结束）直接返回空转；
+ *          hit_lock=1 时（正在展示被敲图）跳过本次换洞
  */
 static void mole_timer_cb(lv_timer_t* t) {
-    if (!running) return;
+    if (!running || hit_lock) return;
     if (active >= 0) hole_off(active);
     active = lv_rand(0, 8);
-    hole_on(active);
+    active_kind = lv_rand(0, MOLE_KINDS - 1);
+    hole_on(active, active_kind);
 }
 
 /**
@@ -102,6 +165,7 @@ static void clock_timer_cb(lv_timer_t* t) {
     time_left--;
     if (time_left <= 0) {
         running = 0;
+        hit_clear();
         if (active >= 0) {
             hole_off(active);
             active = -1;
@@ -115,18 +179,24 @@ static void clock_timer_cb(lv_timer_t* t) {
 }
 
 /**
- * @brief 地洞点击回调：点中地鼠得分，点空计失误
+ * @brief 地洞点击回调：点中地鼠得分并展示被敲图，点空计失误
  */
 static void hole_cb(lv_event_t* e) {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
-    if (!running) return;
+    // 被敲反馈展示期间不接受点击，避免重复点被误判为失误
+    if (!running || hit_lock) return;
 
     int idx = (int)(intptr_t)lv_event_get_user_data(e);
 
     if (idx == active) {
         score++;
-        hole_off(idx);
+        // 切换为当前地鼠对应的被敲图，展示 HIT_SHOW_MS 后恢复
+        hole_show_img(idx, MOLE_HIT[active_kind]);
+        hit_idx = idx;
+        hit_lock = 1;
         active = -1;
+        if (hit_timer) lv_timer_delete(hit_timer);
+        hit_timer = lv_timer_create(hit_back_cb, HIT_SHOW_MS, NULL);
     }
     else {
         miss++;
@@ -138,6 +208,7 @@ static void hole_cb(lv_event_t* e) {
  * @brief 开局：重置计分并开始计时（进入界面 / 重开 / 弹窗确定共用）
  */
 static void mole_start(void) {
+    hit_clear();
     if (active >= 0) {
         hole_off(active);
         active = -1;
@@ -170,6 +241,7 @@ static void mole_restart_cb(lv_event_t* e) {
 static void mole_leave_cb(lv_event_t* e) {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
     running = 0;
+    hit_clear();
     if (active >= 0) {
         hole_off(active);
         active = -1;
@@ -179,7 +251,9 @@ static void mole_leave_cb(lv_event_t* e) {
 
 /**
  * @brief 创建打地鼠游戏界面
- * @details 创建屏幕、标题、状态栏、3x3 地洞网格、控制按钮与常驻定时器
+ * @details 创建屏幕、标题、状态栏、3x3 地洞网格、控制按钮与常驻定时器。
+ *          每个地洞按钮内叠加一个居中 lv_image 显示地鼠图片，
+ *          空洞时隐藏图片。
  */
 void creat_my_mole(void) {
     src_mole = lv_obj_create(NULL);
@@ -197,6 +271,11 @@ void creat_my_mole(void) {
             MOLE_X0 + (i % 3) * MOLE_STEP, MOLE_Y0 + (i / 3) * MOLE_STEP,
             120, 120, "", hole_cb, (void*)(intptr_t)i);
         hole_labs[i] = lv_obj_get_child(holes[i], 0);
+
+        // 地鼠图片：108x108 居中，洞 120x120 四周留 6px 露出按钮背景
+        hole_imgs[i] = lv_image_create(holes[i]);
+        lv_obj_set_align(hole_imgs[i], LV_ALIGN_CENTER);
+        lv_obj_add_flag(hole_imgs[i], LV_OBJ_FLAG_HIDDEN);
     }
 
     // 状态栏（放底部，避开网格）
